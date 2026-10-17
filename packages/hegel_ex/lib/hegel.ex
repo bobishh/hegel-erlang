@@ -30,7 +30,7 @@ defmodule Hegel do
     names = for {:<-, _, [{name, _, _}, _]} <- generators, do: name
     body = Macro.prewalk(block, fn
       {name, _, _} when is_atom(name) ->
-        if Enum.member?(names, name), do: {:var!, [], [{name, [], nil}]}, else: {name, [], nil}
+        if Enum.member?(names, name), do: Macro.var(name, nil), else: {name, [], nil}
       node -> node
     end)
 
@@ -99,7 +99,7 @@ defmodule Hegel do
     names = context_variables(context)
     context = Macro.prewalk(context, fn
       {name, _, _} when is_atom(name) ->
-        if Enum.member?(names, name), do: {:var!, [], [{name, [], nil}]}, else: {name, [], nil}
+        if Enum.member?(names, name), do: Macro.var(name, nil), else: {name, [], nil}
       node -> node
     end)
     block = Macro.prewalk(block, fn
