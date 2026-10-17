@@ -36,13 +36,19 @@ defmodule Hegel do
     quote do: :hegel.draw(:hegel.current_test_case(), unquote(name), unquote(generator))
   end
 
-  def check(fun, options \\ []) when is_function(fun, 0) do
+  def check(fun, options \\ [])
+  def check(fun, options) when is_function(fun, 0) do
     :hegel.check(fn _test_case -> fun.() end, options(options))
   end
 
-  def run(fun, options \\ []) when is_function(fun, 0) do
+  def check(fun, options) when is_function(fun, 1), do: :hegel.check(fun, Hegel.Options.validate(options))
+
+  def run(fun, options \\ [])
+  def run(fun, options) when is_function(fun, 0) do
     :hegel.run(fn _test_case -> fun.() end, options(options))
   end
+
+  def run(fun, options) when is_function(fun, 1), do: :hegel.run(fun, Hegel.Options.validate(options))
 
   def reproduce(fun, blob, options \\ []) when is_function(fun, 0) do
     :hegel.reproduce(fn _test_case -> fun.() end, blob, options(options))
@@ -56,7 +62,7 @@ defmodule Hegel do
   def target(name, value), do: :hegel.target(name, value)
   def on_cleanup(fun), do: :hegel.on_cleanup(fun)
 
-  defp options(options) when is_list(options), do: Map.new(options)
+  defp options(options) when is_list(options), do: Hegel.Options.validate(options)
   defp options(options) when is_map(options), do: options
 
   defp name_draws(ast) do
