@@ -49,8 +49,13 @@ defmodule Hegel do
     _ = opts
     Enum.reduce(Enum.reverse(generators), Hegel.Gen.constant(nil), fn
       {:<-, _, [{name, _, _}, generator]}, acc ->
-        variable = {:var!, [], [{name, [], nil}]}
-        Hegel.Gen.bind(generator, fn unquote(variable) -> unquote(acc) end)
+        body = Macro.prewalk(acc, fn
+          {^name, _, _} -> {:value, [], nil}
+          node -> node
+        end)
+        quote do
+          Hegel.Gen.bind(unquote(generator), fn value -> unquote(body) end)
+        end
       _, acc -> acc
     end)
   end
