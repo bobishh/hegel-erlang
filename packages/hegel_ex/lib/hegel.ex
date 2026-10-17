@@ -14,7 +14,7 @@ defmodule Hegel do
     quote do
       require Hegel
       import Hegel, only: [property: 2, property: 3, property: 4, draw: 1, draw: 2]
-      import Hegel, only: [check: 2, gen: 1]
+      import Hegel, only: [check: 2, gen: 2]
       import Hegel.Gen
     end
   end
