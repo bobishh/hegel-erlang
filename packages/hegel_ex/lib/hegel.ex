@@ -28,12 +28,6 @@ defmodule Hegel do
 
     _ = opts
     names = for {:<-, _, [{name, _, _}, _]} <- generators, do: name
-    body = Macro.prewalk(block, fn
-      {name, _, _} when is_atom(name) ->
-        if Enum.member?(names, name), do: {:var!, [], [{name, [], nil}]}, else: {name, [], nil}
-      node -> node
-    end)
-
     body =
       Enum.reduce(Enum.reverse(generators), block, fn
         {:<-, _, [{name, _, _}, generator]}, acc ->
@@ -75,7 +69,8 @@ defmodule Hegel do
     generator_ast
   end
 
-  defmacro check(fun, options \\ []) do
+  defmacro check(fun, options \\ [])
+  defmacro check(fun, options) do
     quote do: Hegel.check_run(unquote(fun), unquote(options))
   end
 
