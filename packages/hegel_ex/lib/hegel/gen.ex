@@ -5,6 +5,8 @@ defmodule Hegel.Gen do
   defdelegate boolean(probability), to: :hegel_gen
   defdelegate integer(), to: :hegel_gen
   defdelegate integer(min, max), to: :hegel_gen
+  def positive_integer(), do: integer(1, 1_000_000)
+  def non_negative_integer(), do: integer(0, 1_000_000)
   def integer(%Range{first: first, last: last}), do: integer(first, last)
   defdelegate float(), to: :hegel_gen
   defdelegate float(min, max), to: :hegel_gen
