@@ -14,7 +14,7 @@ defmodule Hegel do
     quote do
       require Hegel
       import Hegel, only: [property: 2, property: 3, property: 4, draw: 1, draw: 2]
-      import Hegel, only: [check: 2]
+      import Hegel, only: [check: 2, gen: 1]
       import Hegel.Gen
     end
   end
@@ -30,7 +30,7 @@ defmodule Hegel do
     body =
       Enum.reduce(Enum.reverse(generators), block, fn
         {:<-, _, [{name, _, _}, generator]}, acc ->
-          variable = Macro.var(name, nil)
+          variable = {:var!, [], [{name, [], nil}]}
           quote do
             unquote(variable) = Hegel.draw(unquote(generator))
             unquote(acc)
@@ -38,6 +38,21 @@ defmodule Hegel do
       end)
 
     quote do: unquote(body)
+  end
+
+  defmacro gen({:all, _meta, generators}) do
+    {opts, generators} =
+      case List.last(generators) do
+        kw when is_list(kw) -> {kw, Enum.drop(generators, -1)}
+        _ -> {[], generators}
+      end
+    _ = opts
+    Enum.reduce(Enum.reverse(generators), Hegel.Gen.constant(nil), fn
+      {:<-, _, [{name, _, _}, generator]}, acc ->
+        variable = {:var!, [], [{name, [], nil}]}
+        Hegel.Gen.bind(generator, fn unquote(variable) -> unquote(acc) end)
+      _, acc -> acc
+    end)
   end
 
   defmacro check(fun, options \\ []) do
