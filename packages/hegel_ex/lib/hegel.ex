@@ -81,29 +81,11 @@ defmodule Hegel do
 
   defmacro property(description, options \\ [], do: block) do
     block = name_draws(block)
-    if is_list(options) do
-      quote do
-        @tag :hegel
-        test unquote(description) do
-          Hegel.check(fn -> unquote(block) end, unquote(options))
-        end
-      end
-    else
-      names = context_variables(options)
-      context = Macro.prewalk(options, fn
-        {name, _, _} when is_atom(name) -> Macro.var(name, nil)
-        node -> node
-      end)
-      block = Macro.prewalk(block, fn
-        {name, _, _} when is_atom(name) ->
-          if Enum.member?(names, name), do: Macro.var(name, nil), else: {name, [], nil}
-        node -> node
-      end)
-      quote do
-        @tag :hegel
-        test unquote(description), unquote(context) do
-          Hegel.check(fn -> unquote(block) end, [])
-        end
+
+    quote do
+      @tag :hegel
+      test unquote(description) do
+        Hegel.check(fn -> unquote(block) end, unquote(options))
       end
     end
   end
