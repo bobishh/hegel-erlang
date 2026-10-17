@@ -27,6 +27,27 @@ defmodule Hegel do
     end
   end
 
+  @doc "Defines a property with a per-case context expression.
+
+  The context is evaluated inside each generated case, which makes fixture
+  setup explicit and prevents state leaking between cases."
+  defmacro property(description, context, options, do: block) do
+    block = name_draws(block)
+
+    quote do
+      @tag :hegel
+      test unquote(description) do
+        Hegel.check(
+          fn _test_case ->
+            var!(hegel_context) = unquote(context)
+            unquote(block)
+          end,
+          unquote(options)
+        )
+      end
+    end
+  end
+
   defmacro draw(generator) do
     name = Macro.to_string(generator)
     quote do: :hegel.draw(:hegel.current_test_case(), unquote(name), unquote(generator))
@@ -56,7 +77,15 @@ defmodule Hegel do
 
   def assume(value), do: :hegel.assume(value)
   def reject, do: :hegel.reject()
-  def note(value), do: :hegel.note(inspect(value, pretty: true))
+  @doc "Records a redacted note. Pass `redact: false` only for non-sensitive values."
+  def note(value, options \\ []) do
+    rendered =
+      if Keyword.get(options, :redact, true),
+        do: "<redacted>",
+        else: inspect(value, pretty: true, limit: 100)
+
+    :hegel.note(rendered)
+  end
   def event(name, value \\ true), do: :hegel.event(name, value)
   def target(value), do: :hegel.target(value)
   def target(name, value), do: :hegel.target(name, value)
