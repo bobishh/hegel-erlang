@@ -113,12 +113,17 @@ defmodule Hegel do
 
   defmacro draw(generator) do
     name = Macro.to_string(generator)
+    generator = normalize_generator(generator)
     quote do: :hegel.draw(:hegel.current_test_case(), unquote(name), unquote(generator))
   end
 
   defmacro draw(name, generator) do
+    generator = normalize_generator(generator)
     quote do: :hegel.draw(:hegel.current_test_case(), unquote(name), unquote(generator))
   end
+
+  defp normalize_generator({:{}, _meta, elements}), do: quote(do: Hegel.Gen.tuple(unquote(elements)))
+  defp normalize_generator(generator), do: generator
 
   def check_run(fun, options \\ [])
   def check_run(fun, options) when is_function(fun, 0) do
