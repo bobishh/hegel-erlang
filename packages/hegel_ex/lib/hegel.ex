@@ -13,7 +13,34 @@ defmodule Hegel do
   defmacro __using__(_options) do
     quote do
       import Hegel, only: [property: 2, property: 3, draw: 1, draw: 2]
+      import Hegel, only: [check: 2]
+      import Hegel.Gen, only: [integer: 1, integer: 2, binary: 0, binary: 1, binary: 2,
+        list_of: 1, list_of: 2, member_of: 1, boolean: 0]
     end
+  end
+
+  defmacro check({:all, _meta, generators}, do: block) do
+    {opts, generators} =
+      case List.last(generators) do
+        kw when is_list(kw) -> {kw, Enum.drop(generators, -1)}
+        _ -> {[], generators}
+      end
+
+    _ = opts
+    body =
+      Enum.reduce(Enum.reverse(generators), block, fn
+        {:<-, _, [pattern, generator]}, acc ->
+          quote do
+            unquote(pattern) = Hegel.draw(unquote(generator))
+            unquote(acc)
+          end
+      end)
+
+    quote do: unquote(body)
+  end
+
+  defmacro check(fun, options \\ []) do
+    quote do: Hegel.check_run(unquote(fun), unquote(options))
   end
 
   defmacro property(description, options \\ [], do: block) do
@@ -57,12 +84,12 @@ defmodule Hegel do
     quote do: :hegel.draw(:hegel.current_test_case(), unquote(name), unquote(generator))
   end
 
-  def check(fun, options \\ [])
-  def check(fun, options) when is_function(fun, 0) do
+  def check_run(fun, options \\ [])
+  def check_run(fun, options) when is_function(fun, 0) do
     :hegel.check(fn _test_case -> fun.() end, options(options))
   end
 
-  def check(fun, options) when is_function(fun, 1), do: :hegel.check(fun, Hegel.Options.validate(options))
+  def check_run(fun, options) when is_function(fun, 1), do: :hegel.check(fun, Hegel.Options.validate(options))
 
   def run(fun, options \\ [])
   def run(fun, options) when is_function(fun, 0) do

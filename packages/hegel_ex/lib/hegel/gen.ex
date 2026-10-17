@@ -4,10 +4,17 @@ defmodule Hegel.Gen do
   defdelegate boolean(probability), to: :hegel_gen
   defdelegate integer(), to: :hegel_gen
   defdelegate integer(min, max), to: :hegel_gen
+  def integer(%Range{first: first, last: last}), do: integer(first, last)
   defdelegate float(), to: :hegel_gen
   defdelegate float(min, max), to: :hegel_gen
   defdelegate binary(), to: :hegel_gen
   defdelegate binary(min, max), to: :hegel_gen
+  def binary(options) when is_list(options) do
+    case Keyword.get(options, :length) do
+      nil -> binary(Keyword.get(options, :min_length, 0), Keyword.get(options, :max_length, 256))
+      length -> binary(length, length)
+    end
+  end
   @spec term() :: term()
   def term do
     one_of([integer(), boolean(), binary(), utf8()])
