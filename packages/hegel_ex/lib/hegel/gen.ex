@@ -77,9 +77,11 @@ defmodule Hegel.Gen do
   def bind(generator, fun), do: :hegel_gen.bind(generator, fun)
   def filter(generator, fun), do: :hegel_gen.filter(fun, generator)
   def list(generator), do: :hegel_gen.list(generator)
+  def list(generator) when is_tuple(generator), do: :hegel_gen.list(tuple(Tuple.to_list(generator)))
 
   def list(generator, options) do
-    :hegel_gen.list(generator, Keyword.get(options, :min, 0), Keyword.get(options, :max, 16))
+    generator = if is_tuple(generator), do: tuple(Tuple.to_list(generator)), else: generator
+    :hegel_gen.list(generator, Keyword.get(options, :min, Keyword.get(options, :min_length, 0)), Keyword.get(options, :max, Keyword.get(options, :max_length, 16)))
   end
 
   def resize(generator, max) when is_integer(max) and max >= 0,
