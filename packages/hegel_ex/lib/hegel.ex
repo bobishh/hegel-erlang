@@ -85,7 +85,8 @@ defmodule Hegel do
     if match?({:%{}, _, _}, second) do
       context_names = for {key, _value} <- second |> elem(2), do: key
       block = Macro.prewalk(block, fn
-        {name, meta, ctx} when is_atom(name) and name in context_names -> {:var!, meta, [{name, ctx, nil}]}
+        {name, meta, ctx} when is_atom(name) ->
+          if Enum.member?(context_names, name), do: {:var!, meta, [{name, ctx, nil}]}, else: {name, meta, ctx}
         node -> node
       end)
       quote do
