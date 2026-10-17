@@ -27,6 +27,7 @@ defmodule Hegel.Gen do
   defdelegate one_of(generators), to: :hegel_gen
   defdelegate frequency(weighted), to: :hegel_gen
   defdelegate tuple(generators), to: :hegel_gen
+  def tuple(generators) when is_tuple(generators), do: tuple(Tuple.to_list(generators))
   defdelegate map(fields), to: :hegel_gen
   @spec member_of([term()]) :: term()
   def member_of(values) when is_list(values), do: one_of(Enum.map(values, &constant/1))
