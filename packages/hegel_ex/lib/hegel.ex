@@ -29,7 +29,8 @@ defmodule Hegel do
     _ = opts
     names = for {:<-, _, [{name, _, _}, _]} <- generators, do: name
     body = Macro.prewalk(block, fn
-      {name, _, _} when name in names -> {:var!, [], [{name, [], nil}]}
+      {name, _, _} when is_atom(name) ->
+        if Enum.member?(names, name), do: {:var!, [], [{name, [], nil}]}, else: {name, [], nil}
       node -> node
     end)
 
