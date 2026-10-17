@@ -27,6 +27,12 @@ defmodule Hegel do
       end
 
     _ = opts
+    names = for {:<-, _, [{name, _, _}, _]} <- generators, do: name
+    body = Macro.prewalk(block, fn
+      {name, _, _} when name in names -> {:var!, [], [{name, [], nil}]}
+      node -> node
+    end)
+
     body =
       Enum.reduce(Enum.reverse(generators), block, fn
         {:<-, _, [{name, _, _}, generator]}, acc ->
