@@ -57,19 +57,22 @@ defmodule Hegel do
         _ -> {[], generators}
       end
     _ = opts
-    Enum.reduce(Enum.reverse(generators), block, fn
+    {generator_ast, _} = Enum.reduce(Enum.reverse(generators), {block, true}, fn
       {:<-, _, [{name, _, _}, generator]}, acc ->
+        {acc, terminal?} = acc
         body = Macro.prewalk(acc, fn
           {^name, _, _} -> Macro.var(name, nil)
           node -> node
         end)
+        result = if terminal?, do: quote(do: Hegel.Gen.constant(unquote(body))), else: body
         quote do
           Hegel.Gen.bind(unquote(generator), fn unquote(Macro.var(name, nil)) ->
-            Hegel.Gen.constant(unquote(body))
+            unquote(result)
           end)
-        end
+        end |> then(&{&1, false})
       _, acc -> acc
     end)
+    generator_ast
   end
 
   defmacro check(fun, options \\ []) do
