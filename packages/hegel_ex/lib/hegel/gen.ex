@@ -56,6 +56,7 @@ defmodule Hegel.Gen do
       case Keyword.get(options, :kind) do
         values when is_list(values) -> member_of(values)
         :alphanumeric -> one_of([integer(48..57), integer(65..90), integer(97..122)])
+        :utf8 -> integer(0..127)
         _ -> integer(32..126)
       end
 
