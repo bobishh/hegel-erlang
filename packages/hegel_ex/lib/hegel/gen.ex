@@ -49,11 +49,24 @@ defmodule Hegel.Gen do
   def string(options \\ []),
     do:
       map(
-        binary(Keyword.get(options, :min, 0), Keyword.get(options, :max, 64)),
-        &String.replace_invalid(&1)
+        binary(
+          Keyword.get(options, :min_length, Keyword.get(options, :min, 0)),
+          Keyword.get(options, :max_length, Keyword.get(options, :max, 64))
+        ),
+        fn value ->
+          value
+          |> String.replace_invalid()
+          |> then(fn text ->
+            if Keyword.get(options, :kind) in [:alphanumeric, :ascii] do
+              String.replace(text, ~r/[^A-Za-z0-9]/, "a")
+            else
+              text
+            end
+          end)
+        end
       )
 
-  def string(_kind, options), do: string(options)
+  def string(kind, options), do: string(Keyword.put(options, :kind, kind))
 
   @spec map_of(term(), term(), keyword()) :: term()
   def map_of(key, value, options \\ []) do
