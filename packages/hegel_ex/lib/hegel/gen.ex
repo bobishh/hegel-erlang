@@ -8,6 +8,11 @@ defmodule Hegel.Gen do
   defdelegate float(min, max), to: :hegel_gen
   defdelegate binary(), to: :hegel_gen
   defdelegate binary(min, max), to: :hegel_gen
+  @spec term() :: term()
+  def term do
+    one_of([integer(), boolean(), binary(), utf8()])
+  end
+
   defdelegate utf8(), to: :hegel_gen
   defdelegate utf8(min, max), to: :hegel_gen
   defdelegate constant(value), to: :hegel_gen
@@ -15,6 +20,36 @@ defmodule Hegel.Gen do
   defdelegate frequency(weighted), to: :hegel_gen
   defdelegate tuple(generators), to: :hegel_gen
   defdelegate map(fields), to: :hegel_gen
+  @spec member_of([term()]) :: term()
+  def member_of(values) when is_list(values), do: one_of(Enum.map(values, &constant/1))
+  @spec list_of(term(), keyword()) :: term()
+  def list_of(generator, options \\ []), do: list(generator, options)
+  @spec uniq_list_of(term(), keyword()) :: term()
+  def uniq_list_of(generator, options \\ []) do
+    min = Keyword.get(options, :min, 0)
+    max = Keyword.get(options, :max, 16)
+    map(list(generator, min: min, max: max), &Enum.uniq/1)
+  end
+
+  @spec optional(term(), keyword()) :: term()
+  def optional(generator, options \\ []) do
+    probability = Keyword.get(options, :probability, 0.5)
+    frequency([{probability, constant(nil)}, {1.0 - probability, generator}])
+  end
+
+  @spec string(keyword()) :: term()
+  def string(options \\ []),
+    do:
+      map(
+        binary(Keyword.get(options, :min, 0), Keyword.get(options, :max, 64)),
+        &String.replace_invalid(&1)
+      )
+
+  @spec map_of(term(), term(), keyword()) :: term()
+  def map_of(key, value, options \\ []) do
+    map(list_of(tuple([key, value]), options), &Map.new/1)
+  end
+
   def map(generator, fun), do: :hegel_gen.map(fun, generator)
   def bind(generator, fun), do: :hegel_gen.bind(generator, fun)
   def filter(generator, fun), do: :hegel_gen.filter(fun, generator)
@@ -23,4 +58,9 @@ defmodule Hegel.Gen do
   def list(generator, options) do
     :hegel_gen.list(generator, Keyword.get(options, :min, 0), Keyword.get(options, :max, 16))
   end
+
+  def resize(generator, max) when is_integer(max) and max >= 0,
+    do: list(generator, min: 0, max: max)
+
+  def shuffle(generator), do: map(list(generator), &Enum.shuffle/1)
 end
