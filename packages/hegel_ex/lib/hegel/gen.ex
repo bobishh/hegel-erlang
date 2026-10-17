@@ -49,7 +49,7 @@ defmodule Hegel.Gen do
   end
 
   @spec string(keyword()) :: term()
-  def string(options \ []) do
+  def string(options \\ []) do
     min = Keyword.get(options, :length, Keyword.get(options, :min_length, Keyword.get(options, :min, 0)))
     max = Keyword.get(options, :length, Keyword.get(options, :max_length, Keyword.get(options, :max, 64)))
     char =
