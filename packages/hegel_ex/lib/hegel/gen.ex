@@ -1,5 +1,6 @@
 defmodule Hegel.Gen do
   @moduledoc "Composable generators. Values are shrunk by Hegel's native engine."
+  @type t :: term()
   defdelegate boolean(), to: :hegel_gen
   defdelegate boolean(probability), to: :hegel_gen
   defdelegate integer(), to: :hegel_gen
