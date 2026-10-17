@@ -83,6 +83,11 @@ defmodule Hegel do
     block = name_draws(block)
 
     if match?({:%{}, _, _}, second) do
+      context_names = for {key, _value} <- second |> elem(2), do: key
+      block = Macro.prewalk(block, fn
+        {name, meta, ctx} when is_atom(name) and name in context_names -> {:var!, meta, [{name, ctx, nil}]}
+        node -> node
+      end)
       quote do
         @tag :hegel
         test unquote(description), unquote(second) do
