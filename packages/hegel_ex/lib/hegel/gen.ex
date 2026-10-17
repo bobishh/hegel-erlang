@@ -50,6 +50,7 @@ defmodule Hegel.Gen do
 
   @spec string(keyword()) :: term()
   def string(options \\ []) do
+    options = if is_atom(options), do: [kind: options], else: options
     min = Keyword.get(options, :length, Keyword.get(options, :min_length, Keyword.get(options, :min, 0)))
     max = Keyword.get(options, :length, Keyword.get(options, :max_length, Keyword.get(options, :max, 64)))
     char =
