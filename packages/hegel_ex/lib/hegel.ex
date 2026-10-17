@@ -94,14 +94,8 @@ defmodule Hegel do
 
     quote do
       @tag :hegel
-      test unquote(description) do
-        Hegel.check(
-          fn _test_case ->
-            var!(hegel_context) = unquote(context)
-            unquote(block)
-          end,
-          unquote(options)
-        )
+      test unquote(description), unquote(context) do
+        Hegel.check(fn _test_case -> unquote(block) end, unquote(options))
       end
     end
   end
