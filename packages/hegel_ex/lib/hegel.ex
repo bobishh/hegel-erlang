@@ -65,7 +65,7 @@ defmodule Hegel do
         end)
         quote do
           Hegel.Gen.bind(unquote(generator), fn unquote(Macro.var(name, nil)) ->
-            unquote(body)
+            Hegel.Gen.constant(unquote(body))
           end)
         end
       _, acc -> acc
