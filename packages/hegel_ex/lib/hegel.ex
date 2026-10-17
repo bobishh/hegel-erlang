@@ -14,8 +14,7 @@ defmodule Hegel do
     quote do
       import Hegel, only: [property: 2, property: 3, draw: 1, draw: 2]
       import Hegel, only: [check: 2]
-      import Hegel.Gen, only: [integer: 1, integer: 2, binary: 0, binary: 1, binary: 2,
-        list_of: 1, list_of: 2, member_of: 1, boolean: 0]
+      import Hegel.Gen
     end
   end
 
