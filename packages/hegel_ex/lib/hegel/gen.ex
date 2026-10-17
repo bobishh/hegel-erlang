@@ -54,7 +54,8 @@ defmodule Hegel.Gen do
     max = Keyword.get(options, :length, Keyword.get(options, :max_length, Keyword.get(options, :max, 64)))
     char =
       case Keyword.get(options, :kind) do
-        :alphanumeric -> integer(48..122)
+        values when is_list(values) -> member_of(values)
+        :alphanumeric -> one_of([integer(48..57), integer(65..90), integer(97..122)])
         _ -> integer(32..126)
       end
 
