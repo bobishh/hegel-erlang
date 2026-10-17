@@ -52,6 +52,8 @@ defmodule Hegel.Gen do
         &String.replace_invalid(&1)
       )
 
+  def string(_kind, options), do: string(options)
+
   @spec map_of(term(), term(), keyword()) :: term()
   def map_of(key, value, options \\ []) do
     map(list_of(tuple([key, value]), options), &Map.new/1)
