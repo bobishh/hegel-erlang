@@ -37,7 +37,9 @@ defmodule Hegel do
           end
       end)
 
-    quote do: unquote(body)
+    quote do
+      Hegel.check_run(fn -> unquote(body) end, [])
+    end
   end
 
   defmacro gen({:all, _meta, generators}) do
