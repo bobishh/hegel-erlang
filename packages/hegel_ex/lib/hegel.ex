@@ -50,21 +50,23 @@ defmodule Hegel do
     end
   end
 
-  defmacro gen({:all, _meta, generators}) do
+  defmacro gen({:all, _meta, generators}, do: block) do
     {opts, generators} =
       case List.last(generators) do
         kw when is_list(kw) -> {kw, Enum.drop(generators, -1)}
         _ -> {[], generators}
       end
     _ = opts
-    Enum.reduce(Enum.reverse(generators), Hegel.Gen.constant(nil), fn
+    Enum.reduce(Enum.reverse(generators), block, fn
       {:<-, _, [{name, _, _}, generator]}, acc ->
         body = Macro.prewalk(acc, fn
-          {^name, _, _} -> {:value, [], nil}
+          {^name, _, _} -> Macro.var(name, nil)
           node -> node
         end)
         quote do
-          Hegel.Gen.bind(unquote(generator), fn value -> unquote(body) end)
+          Hegel.Gen.bind(unquote(generator), fn unquote(Macro.var(name, nil)) ->
+            unquote(body)
+          end)
         end
       _, acc -> acc
     end)
