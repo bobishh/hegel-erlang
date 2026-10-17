@@ -87,5 +87,6 @@ defmodule Hegel.Gen do
   def resize(generator, max) when is_integer(max) and max >= 0,
     do: list(generator, min: 0, max: max)
 
+  def shuffle(values) when is_list(values), do: constant(Enum.shuffle(values))
   def shuffle(generator), do: map(list(generator), &Enum.shuffle/1)
 end
