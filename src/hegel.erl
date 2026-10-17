@@ -139,7 +139,11 @@ report_failure(#{output := <<>>}) -> ok;
 report_failure(#{output := Output}) -> io:put_chars(standard_error, ["Property test failed:\n", Output, "\n"]);
 report_failure(_) -> ok.
 run_cleanups(undefined) -> ok;
-run_cleanups(Funs) -> lists:foreach(fun(F) -> try F() catch _:_ -> ok end end, Funs).
+run_cleanups(Funs) ->
+    Errors = lists:foldl(fun(F, Acc) ->
+        try F() of _ -> Acc catch C:R:S -> [{C, R, S} | Acc] end
+    end, [], Funs),
+    case Errors of [] -> ok; _ -> error({hegel_cleanup_failed, lists:reverse(Errors)}) end.
 unwrap_unit(ok) -> ok;
 unwrap_unit(stop) -> throw(hegel_overrun);
 unwrap_unit({error, Reason}) -> error({hegel_native, Reason}).

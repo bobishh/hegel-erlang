@@ -36,7 +36,7 @@ platform() ->
         {win32, _} -> "windows-" ++ Arch ++ "-msvc"
     end.
 
-load_first([]) -> {error, {load_failed, "set HEGEL_NIF_PATH or run `just native`"}};
+load_first([]) -> {error, {load_failed, "Hegel native library not found; set HEGEL_NIF_PATH or run `just native`"}};
 load_first([Path | Rest]) ->
     case erlang:load_nif(Path, 0) of ok -> ok; {error, _} -> load_first(Rest) end.
 

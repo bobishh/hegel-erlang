@@ -27,6 +27,27 @@ defmodule Hegel do
     end
   end
 
+  @doc "Defines a property with a per-case context expression.
+
+  The context is evaluated inside each generated case, which makes fixture
+  setup explicit and prevents state leaking between cases."
+  defmacro property(description, context, options, do: block) do
+    block = name_draws(block)
+
+    quote do
+      @tag :hegel
+      test unquote(description) do
+        Hegel.check(
+          fn _test_case ->
+            var!(hegel_context) = unquote(context)
+            unquote(block)
+          end,
+          unquote(options)
+        )
+      end
+    end
+  end
+
   defmacro draw(generator) do
     name = Macro.to_string(generator)
     quote do: :hegel.draw(:hegel.current_test_case(), unquote(name), unquote(generator))
@@ -36,13 +57,19 @@ defmodule Hegel do
     quote do: :hegel.draw(:hegel.current_test_case(), unquote(name), unquote(generator))
   end
 
-  def check(fun, options \\ []) when is_function(fun, 0) do
+  def check(fun, options \\ [])
+  def check(fun, options) when is_function(fun, 0) do
     :hegel.check(fn _test_case -> fun.() end, options(options))
   end
 
-  def run(fun, options \\ []) when is_function(fun, 0) do
+  def check(fun, options) when is_function(fun, 1), do: :hegel.check(fun, Hegel.Options.validate(options))
+
+  def run(fun, options \\ [])
+  def run(fun, options) when is_function(fun, 0) do
     :hegel.run(fn _test_case -> fun.() end, options(options))
   end
+
+  def run(fun, options) when is_function(fun, 1), do: :hegel.run(fun, Hegel.Options.validate(options))
 
   def reproduce(fun, blob, options \\ []) when is_function(fun, 0) do
     :hegel.reproduce(fn _test_case -> fun.() end, blob, options(options))
@@ -50,13 +77,21 @@ defmodule Hegel do
 
   def assume(value), do: :hegel.assume(value)
   def reject, do: :hegel.reject()
-  def note(value), do: :hegel.note(inspect(value, pretty: true))
+  @doc "Records a redacted note. Pass `redact: false` only for non-sensitive values."
+  def note(value, options \\ []) do
+    rendered =
+      if Keyword.get(options, :redact, true),
+        do: "<redacted>",
+        else: inspect(value, pretty: true, limit: 100)
+
+    :hegel.note(rendered)
+  end
   def event(name, value \\ true), do: :hegel.event(name, value)
   def target(value), do: :hegel.target(value)
   def target(name, value), do: :hegel.target(name, value)
   def on_cleanup(fun), do: :hegel.on_cleanup(fun)
 
-  defp options(options) when is_list(options), do: Map.new(options)
+  defp options(options) when is_list(options), do: Hegel.Options.validate(options)
   defp options(options) when is_map(options), do: options
 
   defp name_draws(ast) do
