@@ -19,6 +19,8 @@ defmodule Hegel do
     end
   end
 
+  defmacro check(form, options \\ [])
+
   defmacro check({:all, _meta, generators}, do: block) do
     {opts, generators} =
       case List.last(generators) do
@@ -27,7 +29,6 @@ defmodule Hegel do
       end
 
     _ = opts
-    names = for {:<-, _, [{name, _, _}, _]} <- generators, do: name
     body =
       Enum.reduce(Enum.reverse(generators), block, fn
         {:<-, _, [{name, _, _}, generator]}, acc ->
@@ -42,6 +43,10 @@ defmodule Hegel do
     quote do
       Hegel.check_run(fn -> unquote(body) end, [])
     end
+  end
+
+  defmacro check(fun, options) do
+    quote do: Hegel.check_run(unquote(fun), unquote(options))
   end
 
   defmacro gen({:all, _meta, generators}, do: block) do
@@ -67,11 +72,6 @@ defmodule Hegel do
       _, acc -> acc
     end)
     generator_ast
-  end
-
-  defmacro check(fun, options \\ [])
-  defmacro check(fun, options) do
-    quote do: Hegel.check_run(unquote(fun), unquote(options))
   end
 
   defmacro property(description, second \\ [], do: block) do
