@@ -83,7 +83,10 @@ defmodule Hegel.Gen do
       if is_tuple(generator) and elem(generator, 0) != :gen,
         do: tuple(Tuple.to_list(generator)),
         else: generator
-    :hegel_gen.list(generator, Keyword.get(options, :min, Keyword.get(options, :min_length, 0)), Keyword.get(options, :max, Keyword.get(options, :max_length, 16)))
+    exact = Keyword.get(options, :length)
+    min = Keyword.get(options, :min, Keyword.get(options, :min_length, exact || 0))
+    max = Keyword.get(options, :max, Keyword.get(options, :max_length, exact || 16))
+    :hegel_gen.list(generator, min, max)
   end
 
   def resize(generator, max) when is_integer(max) and max >= 0,
