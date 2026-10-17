@@ -49,25 +49,17 @@ defmodule Hegel.Gen do
   end
 
   @spec string(keyword()) :: term()
-  def string(options \\ []),
-    do:
-      map(
-        binary(
-          Keyword.get(options, :length, Keyword.get(options, :min_length, Keyword.get(options, :min, 0))),
-          Keyword.get(options, :length, Keyword.get(options, :max_length, Keyword.get(options, :max, 64)))
-        ),
-        fn value ->
-          value
-          |> String.replace_invalid()
-          |> then(fn text ->
-            if Keyword.get(options, :kind) in [:alphanumeric, :ascii] do
-              String.replace(text, ~r/[^A-Za-z0-9]/, "a")
-            else
-              text
-            end
-          end)
-        end
-      )
+  def string(options \ []) do
+    min = Keyword.get(options, :length, Keyword.get(options, :min_length, Keyword.get(options, :min, 0)))
+    max = Keyword.get(options, :length, Keyword.get(options, :max_length, Keyword.get(options, :max, 64)))
+    char =
+      case Keyword.get(options, :kind) do
+        :alphanumeric -> integer(48..122)
+        _ -> integer(32..126)
+      end
+
+    map(list(char, min: min, max: max), &List.to_string/1)
+  end
 
   def string(kind, options), do: string(Keyword.put(options, :kind, kind))
 
