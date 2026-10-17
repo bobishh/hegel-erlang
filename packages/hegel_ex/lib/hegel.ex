@@ -42,6 +42,7 @@ defmodule Hegel do
             unquote(variable) = Hegel.draw(unquote(generator))
             unquote(acc)
           end
+        _, acc -> acc
       end)
 
     quote do
