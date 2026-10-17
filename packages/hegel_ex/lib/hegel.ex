@@ -96,17 +96,6 @@ defmodule Hegel do
   setup explicit and prevents state leaking between cases."
   defmacro property(description, context, options, do: block) do
     block = name_draws(block)
-    names = context_variables(context)
-    context = Macro.prewalk(context, fn
-      {name, _, _} when is_atom(name) ->
-        if Enum.member?(names, name), do: {:var!, [], [{name, [], nil}]}, else: {name, [], nil}
-      node -> node
-    end)
-    block = Macro.prewalk(block, fn
-      {name, _, _} when is_atom(name) ->
-        if Enum.member?(names, name), do: {:var!, [], [{name, [], nil}]}, else: {name, [], nil}
-      node -> node
-    end)
 
     quote do
       @tag :hegel
@@ -114,16 +103,6 @@ defmodule Hegel do
         Hegel.check(fn _test_case -> unquote(block) end, unquote(options))
       end
     end
-  end
-
-  defp context_variables(ast) do
-    {_ast, names} =
-      Macro.prewalk(ast, [], fn
-        {name, _, _} = node, acc when is_atom(name) -> {node, [name | acc]}
-        node, acc -> {node, acc}
-      end)
-
-    Enum.uniq(names)
   end
 
   defmacro draw(generator) do
