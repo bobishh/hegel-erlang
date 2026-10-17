@@ -50,8 +50,8 @@ defmodule Hegel.Gen do
     do:
       map(
         binary(
-          Keyword.get(options, :min_length, Keyword.get(options, :min, 0)),
-          Keyword.get(options, :max_length, Keyword.get(options, :max, 64))
+          Keyword.get(options, :length, Keyword.get(options, :min_length, Keyword.get(options, :min, 0))),
+          Keyword.get(options, :length, Keyword.get(options, :max_length, Keyword.get(options, :max, 64)))
         ),
         fn value ->
           value
