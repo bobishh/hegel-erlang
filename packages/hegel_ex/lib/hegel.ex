@@ -28,9 +28,10 @@ defmodule Hegel do
     _ = opts
     body =
       Enum.reduce(Enum.reverse(generators), block, fn
-        {:<-, _, [pattern, generator]}, acc ->
+        {:<-, _, [{name, _, _}, generator]}, acc ->
+          variable = Macro.var(name, nil)
           quote do
-            unquote(pattern) = Hegel.draw(unquote(generator))
+            unquote(variable) = Hegel.draw(unquote(generator))
             unquote(acc)
           end
       end)
