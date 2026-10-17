@@ -79,24 +79,24 @@ defmodule Hegel do
     quote do: Hegel.check_run(unquote(fun), unquote(options))
   end
 
-  defmacro property(description, context, do: block) when is_map(context) do
+  defmacro property(description, second \\ [], do: block) do
     block = name_draws(block)
 
-    quote do
-      @tag :hegel
-      test unquote(description), unquote(context) do
-        Hegel.check(fn -> unquote(block) end, [])
+    if match?({:%{}, _, _}, second) do
+      quote do
+        @tag :hegel
+        test unquote(description), unquote(second) do
+          Hegel.check(fn -> unquote(block) end, [])
+        end
       end
-    end
-  end
+    else
+      options = second
 
-  defmacro property(description, options \\ [], do: block) do
-    block = name_draws(block)
-
-    quote do
-      @tag :hegel
-      test unquote(description) do
-        Hegel.check(fn -> unquote(block) end, unquote(options))
+      quote do
+        @tag :hegel
+        test unquote(description) do
+          Hegel.check(fn -> unquote(block) end, unquote(options))
+        end
       end
     end
   end
