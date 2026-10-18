@@ -54,7 +54,14 @@ platform() ->
 
 load_first([]) -> {error, {load_failed, "Hegel native library not found; set HEGEL_NIF_PATH or run `just native`"}};
 load_first([Path | Rest]) ->
-    case erlang:load_nif(Path, 0) of ok -> ok; {error, _} -> load_first(Rest) end.
+    case erlang:load_nif(Path, 0) of
+        ok -> ok;
+        {error, _} ->
+            case erlang:load_nif(Path ++ ".so", 0) of
+                ok -> ok;
+                {error, _} -> load_first(Rest)
+            end
+    end.
 
 nif_error() -> erlang:nif_error({nif_not_loaded, ?MODULE}).
 version() -> nif_error().

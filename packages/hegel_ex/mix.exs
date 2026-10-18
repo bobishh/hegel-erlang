@@ -7,14 +7,14 @@ defmodule Mix.Tasks.Compile.HegelNif do
     root = Path.expand("../..", package)
     manifest = Path.join(root, "native/hegel_nif/Cargo.toml")
     output = Path.join(root, "native/hegel_nif/target/release/libhegel_nif.so")
-    destination = Path.join(root, "priv/hegel_nif")
+    destination = Path.join(root, "priv/hegel_nif.so")
     build_destination =
       Mix.Project.build_path()
       |> Path.dirname()
-      |> Path.join("hegel/priv/hegel_nif")
+      |> Path.join("hegel/priv/hegel_nif.so")
     lib_build_destination =
       Mix.Project.build_path()
-      |> Path.join("lib/hegel/priv/hegel_nif")
+      |> Path.join("lib/hegel/priv/hegel_nif.so")
     build_root = Mix.Project.build_path() |> Path.dirname() |> Path.dirname()
 
     unless File.exists?(manifest), do: Mix.raise("Hegel native manifest is missing: #{manifest}")
@@ -32,7 +32,7 @@ defmodule Mix.Tasks.Compile.HegelNif do
     File.mkdir_p!(Path.dirname(lib_build_destination))
     File.cp!(output, lib_build_destination)
     for profile <- ~w(dev test prod) do
-      profile_destination = Path.join(build_root, Path.join(["_build", profile, "lib/hegel/priv/hegel_nif"]))
+      profile_destination = Path.join(build_root, Path.join(["_build", profile, "lib/hegel/priv/hegel_nif.so"]))
       File.mkdir_p!(Path.dirname(profile_destination))
       File.cp!(output, profile_destination)
     end
