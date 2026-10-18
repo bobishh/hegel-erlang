@@ -130,4 +130,8 @@ defmodule HegelPropertyContextTest do
   property "map ExUnit context patterns remain available", %{fixture: fixture} do
     assert fixture == %{value: :from_setup}
   end
+
+  property "context patterns preserve Hegel options", %{fixture: fixture}, test_cases: 2 do
+    assert fixture == %{value: :from_setup}
+  end
 end
