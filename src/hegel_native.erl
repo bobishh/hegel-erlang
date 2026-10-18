@@ -26,7 +26,8 @@ dependency_paths(Path) -> dependency_paths(filename:absname(Path), 8, []).
 dependency_paths(_Path, 0, Acc) -> Acc;
 dependency_paths(Path, Left, Acc) ->
     Parent = filename:dirname(Path),
-    Here = [filename:join([Path, "deps", "hegel_ex", "priv", "hegel_nif"])],
+    Here = [filename:join([Path, "deps", "hegel_ex", "priv", "hegel_nif"]),
+            filename:join([Path, "priv", "hegel_nif"])],
     case Parent =:= Path of true -> Here ++ Acc; false -> dependency_paths(Parent, Left - 1, Here ++ Acc) end.
 
 native_paths(_Path, 0, Acc) -> Acc;
