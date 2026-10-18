@@ -3,10 +3,15 @@ defmodule Mix.Tasks.Compile.HegelNif do
 
   @impl true
   def run(_args) do
-    root = Path.expand("../..", File.cwd!())
+    package = Mix.Project.project_file() |> Path.dirname()
+    root = Path.expand("../..", package)
     manifest = Path.join(root, "native/hegel_nif/Cargo.toml")
     output = Path.join(root, "native/hegel_nif/target/release/libhegel_nif.so")
     destination = Path.join(root, "priv/hegel_nif")
+    build_destination =
+      Mix.Project.build_path()
+      |> Path.dirname()
+      |> Path.join("hegel/priv/hegel_nif")
 
     unless File.exists?(manifest), do: Mix.raise("Hegel native manifest is missing: #{manifest}")
 
@@ -18,6 +23,8 @@ defmodule Mix.Tasks.Compile.HegelNif do
 
     File.mkdir_p!(Path.dirname(destination))
     File.cp!(output, destination)
+    File.mkdir_p!(Path.dirname(build_destination))
+    File.cp!(output, build_destination)
     :ok
   end
 end
