@@ -1,11 +1,12 @@
 -module(hegel_antithesis_tests).
 -include_lib("eunit/include/eunit.hrl").
--include("hegel.hrl").
 
 %% Inside Antithesis the engine appends a declaration and one evaluation per
 %% located run to $ANTITHESIS_OUTPUT_DIR/sdk.jsonl. ERTS keeps its own copy of
 %% the environment, so os:putenv/2 never reaches the engine's getenv: each
 %% case runs in a child VM started with the variable, as Antithesis does.
+%% The ?HEGEL_LOCATION/?HEGEL_CHECK macros are exercised by examples/erlang:
+%% Gleam compiles this directory without the include path.
 
 -define(LOCATION(Name), "{\"test/probe.erl\", 7, hegel_probe, " Name "}").
 
@@ -37,19 +38,9 @@ unlocated_run_does_not_report_test_() ->
         ?assertEqual([], child("#{status := passed} = hegel:run(fun(_) -> ok end, #{test_cases => 2})"))
     end}.
 
-location_macro_names_the_enclosing_function_test() ->
-    {File, Line, Module, Function} = opaque(?HEGEL_LOCATION),
-    ?assertEqual({?FILE, ?MODULE, location_macro_names_the_enclosing_function_test},
-                 {File, Module, Function}),
-    ?assert(is_integer(Line) andalso Line > 0),
-    ?assertEqual(ok, ?HEGEL_CHECK(fun(_TC) -> ok end, #{test_cases => 1})).
-
 invalid_location_is_rejected_test() ->
     ?assertError({badarg, {location, bad}},
                  hegel:run(fun(_TC) -> ok end, #{test_cases => 1, location => bad})).
-
-%% Hides a compile-time constant from the compiler's guard folding.
-opaque(Value) -> binary_to_term(term_to_binary(Value)).
 
 child(Expr) ->
     Dir = filename:join(os:getenv("TMPDIR", "/tmp"),
