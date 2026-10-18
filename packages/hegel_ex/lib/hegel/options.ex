@@ -10,6 +10,26 @@ defmodule Hegel.Options do
   def validate(options) when is_list(options), do: options |> Map.new() |> validate()
 
   def validate(options) when is_map(options) do
+    supported = [
+      :profile,
+      :test_cases,
+      :seed,
+      :derandomize,
+      :database,
+      :report_multiple_failures,
+      :show_statistics,
+      :print_blob,
+      :location
+    ]
+
+    unknown = Map.keys(options) -- supported
+
+    if unknown != [] do
+      raise ArgumentError,
+            "unsupported Hegel options: #{inspect(Enum.sort(unknown))}; " <>
+              "use test_cases on the outer runner to set the exploration budget"
+    end
+
     unless is_integer(Map.get(options, :test_cases, 100)) and
              Map.get(options, :test_cases, 100) > 0 do
       raise ArgumentError, "test_cases must be a positive integer"

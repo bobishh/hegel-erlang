@@ -30,6 +30,8 @@ defmodule Hegel do
         _ -> {[], generators}
       end
 
+    validate_clauses!(generators, :check)
+
     body =
       Enum.reduce(Enum.reverse(generators), block, fn
         {:<-, _, [{name, _, _}, generator]}, acc ->
@@ -48,6 +50,11 @@ defmodule Hegel do
 
     quote do
       if Hegel.in_property_case?() do
+        unless unquote(opts) == [] do
+          raise ArgumentError,
+                "nested check all cannot accept execution options; put them on the outer property"
+        end
+
         unquote(body)
       else
         Hegel.check_run(
@@ -91,7 +98,8 @@ defmodule Hegel do
         _ -> {[], generators}
       end
 
-    _ = opts
+    if opts != [], do: raise(ArgumentError, "gen all does not accept execution options")
+    validate_clauses!(generators, :gen)
 
     {generator_ast, _} =
       Enum.reduce(Enum.reverse(generators), {block, true}, fn
@@ -118,6 +126,21 @@ defmodule Hegel do
       end)
 
     generator_ast
+  end
+
+  @spec validate_clauses!([Macro.t()], :check | :gen) :: :ok
+  defp validate_clauses!(clauses, macro_name) do
+    Enum.each(clauses, fn
+      {:<-, _, [{name, _, context}, _generator]}
+      when is_atom(name) and (is_atom(context) or is_nil(context)) ->
+        :ok
+
+      clause ->
+        raise ArgumentError,
+              "#{macro_name} all requires variable <- generator clauses; unsupported clause: " <>
+                Macro.to_string(clause) <>
+                ". Use draw/2 with explicit binding and assume/1 for filters."
+    end)
   end
 
   defmacro property(description, second \\ [], do: block) do
@@ -165,10 +188,12 @@ defmodule Hegel do
     end
   end
 
-  @doc "Defines a property with a per-case context expression.
+  @doc """
+  Defines a property using an ExUnit context pattern and runner options.
 
-  The context is evaluated inside each generated case, which makes fixture
-  setup explicit and prevents state leaking between cases."
+  ExUnit setup runs once per test, not once per generated case. Use the
+  `setup` and `teardown` runner options for independent per-case fixtures.
+  """
   defmacro property(description, context, options, do: block) do
     block = name_draws(block)
 

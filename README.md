@@ -35,6 +35,23 @@ end
 The property macro tags tests with `:hegel`, captures useful draw names, and
 preserves ExUnit assertion exceptions and stacktraces.
 
+The default exploration budget is 100 cases (the engine may exhaust a finite
+input domain earlier). Set `test_cases` on the outer `property` or `check`
+runner. A standalone `check all` accepts runner options; inside a property it
+only draws from the active case and rejects execution options. StreamData
+options such as `max_runs` and `max_shrinking_steps` are not supported and raise
+an error rather than silently changing verification strength.
+
+`check all` and `gen all` accept simple `variable <- generator` clauses.
+Unsupported patterns, filters, and generator options fail during expansion.
+For destructuring use explicit draws; filter cases with `assume/1`, or build
+filtered generators with `Hegel.Gen.filter/2`.
+
+ExUnit context patterns bind once-per-test setup data. For fresh fixtures in
+every generated, shrinking, and replayed case, use runner `setup: fn -> %{} end`
+and `teardown: fn context -> ... end` options, or register `Hegel.on_cleanup/1`
+inside the case. ExUnit `on_exit/1` runs only after the whole test.
+
 Stateful testing is exposed as `Hegel.StateMachine`; concurrent tests against
 shared processes or ETS state use `Hegel.ConcurrentStateMachine`. `Hegel.Task`
 clones the native test-case handle so worker processes have independent,
