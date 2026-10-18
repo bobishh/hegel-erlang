@@ -104,7 +104,7 @@ defmodule Hegel do
           Macro.postwalk(block, fn
             {name, meta, ctx} when is_atom(name) ->
               if Enum.member?(context_names, name),
-                do: {:var!, meta, [{name, ctx, nil}]},
+                do: {:var!, meta, [{name, [], nil}]},
                 else: {name, meta, ctx}
 
             node ->
