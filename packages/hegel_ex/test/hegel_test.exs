@@ -52,6 +52,19 @@ defmodule HegelTest do
     end
   end
 
+  test "check all reuses the active property case" do
+    assert %{status: :passed} =
+             Hegel.run(
+               fn ->
+                 Hegel.check all(x <- Hegel.Gen.integer(0, 10)) do
+                   assert is_integer(x)
+                 end
+               end,
+               test_cases: 2,
+               database: :disabled
+             )
+  end
+
   test "teardown failures surface as cleanup errors" do
     assert_raise ErlangError, ~r/hegel_cleanup_failed/, fn ->
       Hegel.run(

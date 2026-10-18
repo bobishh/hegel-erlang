@@ -43,7 +43,11 @@ defmodule Hegel do
       end)
 
     quote do
-      Hegel.check_run(fn -> unquote(body) end, [])
+      if Hegel.in_property_case?() do
+        unquote(body)
+      else
+        Hegel.check_run(fn -> unquote(body) end, [])
+      end
     end
   end
 
@@ -211,6 +215,10 @@ defmodule Hegel do
         raise RuntimeError, "Hegel.context/0 called without per-case setup"
     end
   end
+
+  @doc false
+  @spec in_property_case?() :: boolean()
+  def in_property_case?, do: Process.get(@test_case_key) != nil
 
   defp split_context_options(options) when is_list(options) do
     {setup, options} = Keyword.pop(options, :setup)
