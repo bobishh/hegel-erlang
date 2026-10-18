@@ -30,7 +30,6 @@ defmodule Hegel do
         _ -> {[], generators}
       end
 
-    _ = opts
     body =
       Enum.reduce(Enum.reverse(generators), block, fn
         {:<-, _, [{name, _, _}, generator]}, acc ->
