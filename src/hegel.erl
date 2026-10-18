@@ -14,6 +14,11 @@ check(Property, Options) ->
         #{status := failed, failures := [Failure]} -> report_failure(Failure), raise_failure(Failure);
         #{status := failed, failures := Failures} ->
             lists:foreach(fun report_failure/1, Failures), error({hegel_multiple_failures, Failures});
+        #{status := error, error := Reason, failures := [First | _] = Failures} ->
+            %% Preserve the native error and original BEAM diagnostic. Do not
+            %% replay an unstable case or print draws/reproduction blobs.
+            erlang:raise(error, {hegel_run_error, Reason, Failures},
+                         maps:get(stacktrace, First));
         #{status := error, error := Reason} -> error({hegel_run_error, Reason})
     end.
 
@@ -84,7 +89,8 @@ drive(Run, Property, Stash) ->
 finish(Run, Property, Options, Discovery) ->
     case hegel_native:run_result(Run) of
         {passed, _} -> #{status => passed, failures => []};
-        {error, Reason} -> #{status => error, error => Reason, failures => []};
+        {error, Reason} ->
+            #{status => error, error => Reason, failures => lists:reverse(Discovery)};
         {failed_nondeterministic, _} ->
             #{status => failed, failures => lists:reverse(Discovery), nondeterministic => true};
         {failed, NativeFailures} ->

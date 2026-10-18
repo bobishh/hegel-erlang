@@ -21,3 +21,36 @@ check_preserves_exception_test() ->
             _ = hegel:draw(TC, "x", hegel_gen:integer(0, 10)),
             erlang:error(original_failure)
         end, #{test_cases => 5, database => disabled, seed => 9})).
+
+%% A deliberately unstable property fails discovery and passes the engine's
+%% replay. This exercises the real native Flaky error rather than mocking it.
+flaky_run_preserves_discovery_test() ->
+    Property = flaky_property(),
+    Result = hegel:run(Property, #{test_cases => 10, database => disabled, seed => 7}),
+    ?assertMatch(#{status := error, error := _,
+                  failures := [#{class := error, reason := original_flaky_failure,
+                                 stacktrace := [_ | _]} | _]}, Result),
+    #{failures := Failures} = Result,
+    ?assert(lists:all(fun(F) -> not maps:is_key(blob, F) andalso
+                               not maps:is_key(output, F) end, Failures)).
+
+flaky_check_preserves_native_and_beam_error_test() ->
+    Property = flaky_property(),
+    try hegel:check(Property, #{test_cases => 10, database => disabled, seed => 7}) of
+        _ -> ?assert(false)
+    catch
+        error:{hegel_run_error, _NativeReason, [First | _]}:Stack ->
+            ?assertMatch(#{class := error, reason := original_flaky_failure}, First),
+            ?assertEqual(maps:get(stacktrace, First), Stack)
+    end.
+
+-spec flaky_property() -> fun((term()) -> ok).
+flaky_property() ->
+    Counter = atomics:new(1, []),
+    fun(TC) ->
+        _ = hegel:draw(TC, "value", hegel_gen:integer(0, 1000000)),
+        case atomics:add_get(Counter, 1, 1) of
+            1 -> erlang:error(original_flaky_failure);
+            _ -> ok
+        end
+    end.

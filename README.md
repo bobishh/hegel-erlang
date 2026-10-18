@@ -52,6 +52,13 @@ every generated, shrinking, and replayed case, use runner `setup: fn -> %{} end`
 and `teardown: fn context -> ... end` options, or register `Hegel.on_cleanup/1`
 inside the case. ExUnit `on_exit/1` runs only after the whole test.
 
+Native run errors, including non-reproducible failures, keep `status: :error`
+and retain any discovered BEAM exceptions in `failures`. `check` raises
+`{:hegel_run_error, native_reason, failures}` at the original failure stack
+when those diagnostics exist (otherwise the existing two-element error tuple
+is retained). This path does not replay the unstable case or print its draws
+or reproduction blob.
+
 Stateful testing is exposed as `Hegel.StateMachine`; concurrent tests against
 shared processes or ETS state use `Hegel.ConcurrentStateMachine`. `Hegel.Task`
 clones the native test-case handle so worker processes have independent,
