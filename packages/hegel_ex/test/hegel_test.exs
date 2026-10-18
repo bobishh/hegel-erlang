@@ -123,11 +123,11 @@ defmodule HegelPropertyContextTest do
     %{fixture: %{value: :from_setup}}
   end
 
-  property "a named ExUnit context pattern remains available", fixture do
+  property "a named ExUnit context pattern remains available", fixture, test_cases: 2 do
     assert fixture == %{value: :from_setup}
   end
 
-  property "map ExUnit context patterns remain available", %{fixture: fixture} do
+  property "map ExUnit context patterns remain available", %{fixture: fixture}, test_cases: 2 do
     assert fixture == %{value: :from_setup}
   end
 
