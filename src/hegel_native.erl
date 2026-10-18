@@ -17,7 +17,11 @@ candidate_paths() ->
     {ok, Cwd} = file:get_cwd(),
     Built = filename:absname(filename:join([filename:dirname(Beam), "..", "..", "..", "..", "hegel", "priv", "hegel_nif"])),
     Source = filename:join([Cwd, "deps", "hegel_ex", "priv", "hegel_nif"]),
-    Override ++ Priv ++ [Built, Source] ++ dependency_paths(Cwd) ++ dependency_paths(filename:dirname(Beam)) ++
+    ExSource = case code:lib_dir(hegel_ex) of
+        {error, _} -> [];
+        ExLib -> [filename:join([ExLib, "..", "..", "..", "..", "deps", "hegel_ex", "priv", "hegel_nif"])]
+    end,
+    Override ++ Priv ++ [Built, Source] ++ ExSource ++ dependency_paths(Cwd) ++ dependency_paths(filename:dirname(Beam)) ++
         native_paths(Cwd) ++ native_paths(filename:dirname(Beam)).
 
 native_paths(Path) -> native_paths(filename:absname(Path), 8, []).
