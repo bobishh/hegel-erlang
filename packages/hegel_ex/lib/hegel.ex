@@ -46,7 +46,7 @@ defmodule Hegel do
       if Hegel.in_property_case?() do
         unquote(body)
       else
-        Hegel.check_run(fn -> unquote(body) end, [])
+        Hegel.check_run(fn -> unquote(body) end, unquote(opts))
       end
     end
   end
