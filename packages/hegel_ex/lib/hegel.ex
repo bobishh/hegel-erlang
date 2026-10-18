@@ -1,4 +1,7 @@
 defmodule Hegel do
+  @context_key :"$hegel_context"
+  @test_case_key :"$hegel_test_case"
+
   @moduledoc """
   Property-based testing backed by Hegel's Erlang SDK.
 
@@ -13,8 +16,7 @@ defmodule Hegel do
   defmacro __using__(_options) do
     quote do
       require Hegel
-      import Hegel, only: [property: 2, property: 3, property: 4, draw: 1, draw: 2]
-      import Hegel, only: [check: 2, gen: 2]
+      import Hegel
       import Hegel.Gen
     end
   end
@@ -77,28 +79,38 @@ defmodule Hegel do
   defmacro property(description, second \\ [], do: block) do
     block = name_draws(block)
 
-    if match?({:%{}, _, _}, second) do
-      context_names = for {key, _value} <- second |> elem(2), do: key
-      block = Macro.prewalk(block, fn
-        {name, meta, ctx} when is_atom(name) ->
-          if Enum.member?(context_names, name), do: {:var!, meta, [{name, ctx, nil}]}, else: {name, meta, ctx}
-        node -> node
-      end)
-      quote do
-        @tag :hegel
-        test unquote(description), unquote(second) do
-          Hegel.check(fn -> unquote(block) end, [])
+    cond do
+      match?({:%{}, _, _}, second) ->
+        context_names = for {key, _value} <- second |> elem(2), do: key
+        block = Macro.prewalk(block, fn
+          {name, meta, ctx} when is_atom(name) ->
+            if Enum.member?(context_names, name), do: {:var!, meta, [{name, ctx, nil}]}, else: {name, meta, ctx}
+          node -> node
+        end)
+        quote do
+          @tag :hegel
+          test unquote(description), unquote(second) do
+            Hegel.check(fn -> unquote(block) end, [])
+          end
         end
-      end
-    else
-      options = second
 
-      quote do
-        @tag :hegel
-        test unquote(description) do
-          Hegel.check(fn -> unquote(block) end, unquote(options))
+      is_list(second) ->
+        options = second
+
+        quote do
+          @tag :hegel
+          test unquote(description) do
+            Hegel.check(fn -> unquote(block) end, unquote(options))
+          end
         end
-      end
+
+      true ->
+        quote do
+          @tag :hegel
+          test unquote(description), unquote(second) do
+            Hegel.check(fn -> unquote(block) end, [])
+          end
+        end
     end
   end
 
@@ -139,20 +151,34 @@ defmodule Hegel do
 
   def check_run(fun, options \\ [])
   def check_run(fun, options) when is_function(fun, 0) do
-    :hegel.check(fn _test_case -> fun.() end, options(options))
+    check_run(fn _test_case -> fun.() end, options)
   end
 
-  def check_run(fun, options) when is_function(fun, 1), do: :hegel.check(fun, Hegel.Options.validate(options))
+  def check_run(fun, options) when is_function(fun, 1) do
+    ensure_not_nested!()
+    {context_options, engine_options} = split_context_options(options)
+    property = with_context(fun, context_options)
+    :hegel.check(property, Hegel.Options.validate(engine_options))
+  end
 
   def run(fun, options \\ [])
   def run(fun, options) when is_function(fun, 0) do
-    :hegel.run(fn _test_case -> fun.() end, options(options))
+    run(fn _test_case -> fun.() end, options)
   end
 
-  def run(fun, options) when is_function(fun, 1), do: :hegel.run(fun, Hegel.Options.validate(options))
+  def run(fun, options) when is_function(fun, 1) do
+    {context_options, engine_options} = split_context_options(options)
+    :hegel.run(with_context(fun, context_options), Hegel.Options.validate(engine_options))
+  end
 
-  def reproduce(fun, blob, options \\ []) when is_function(fun, 0) do
-    :hegel.reproduce(fn _test_case -> fun.() end, blob, options(options))
+  def reproduce(fun, blob, options \\ [])
+  def reproduce(fun, blob, options) when is_function(fun, 0) do
+    reproduce(fn _test_case -> fun.() end, blob, options)
+  end
+
+  def reproduce(fun, blob, options) when is_function(fun, 1) do
+    {context_options, engine_options} = split_context_options(options)
+    :hegel.reproduce(with_context(fun, context_options), blob, Hegel.Options.validate(engine_options))
   end
 
   def assume(value), do: :hegel.assume(value)
@@ -171,8 +197,86 @@ defmodule Hegel do
   def target(name, value), do: :hegel.target(name, value)
   def on_cleanup(fun), do: :hegel.on_cleanup(fun)
 
-  defp options(options) when is_list(options), do: Hegel.Options.validate(options)
-  defp options(options) when is_map(options), do: options
+  @doc "Returns the context created for the current generated case."
+  @spec context() :: map()
+  def context do
+    case {Process.get(@test_case_key), Process.get(@context_key)} do
+      {nil, _context} ->
+        raise RuntimeError, "Hegel.context/0 called outside a property case"
+
+      {_test_case, context} when is_map(context) ->
+        context
+
+      {_test_case, nil} ->
+        raise RuntimeError, "Hegel.context/0 called without per-case setup"
+    end
+  end
+
+  defp split_context_options(options) when is_list(options) do
+    {setup, options} = Keyword.pop(options, :setup)
+    {teardown, options} = Keyword.pop(options, :teardown)
+    {%{setup: setup, teardown: teardown}, options}
+  end
+
+  defp split_context_options(options) when is_map(options) do
+    {setup, options} = Map.pop(options, :setup)
+    {teardown, options} = Map.pop(options, :teardown)
+    {%{setup: setup, teardown: teardown}, options}
+  end
+
+  defp ensure_not_nested! do
+    if Process.get(@test_case_key) != nil do
+      raise RuntimeError, "nested Hegel.check is not allowed inside a property case"
+    end
+  end
+
+  defp with_context(fun, %{setup: setup, teardown: teardown}) do
+    validate_setup(setup)
+    validate_teardown(teardown)
+
+    fn test_case ->
+      context = setup_context(setup)
+      Process.put(@context_key, context)
+
+      on_cleanup(fn ->
+        try do
+          if is_function(teardown, 1), do: teardown.(context)
+        after
+          Process.delete(@context_key)
+        end
+      end)
+
+      fun.(test_case)
+    end
+  end
+
+  defp setup_context(nil), do: %{}
+
+  defp setup_context(setup) when is_function(setup, 0) do
+    case setup.() do
+      context when is_map(context) -> context
+      other -> raise ArgumentError, "Hegel setup must return a map, got: #{inspect(other)}"
+    end
+  end
+
+  defp setup_context(other) do
+    raise ArgumentError, "Hegel setup must be a zero-arity function, got: #{inspect(other)}"
+  end
+
+  defp validate_setup(nil), do: :ok
+  defp validate_setup(setup) when is_function(setup, 0), do: :ok
+
+  defp validate_setup(setup) do
+    raise ArgumentError, "Hegel setup must be a zero-arity function, got: #{inspect(setup)}"
+  end
+
+  defp validate_teardown(nil), do: :ok
+  defp validate_teardown(teardown) when is_function(teardown, 1), do: :ok
+
+  defp validate_teardown(teardown) do
+    raise ArgumentError,
+      "Hegel teardown must be a one-arity function, got: #{inspect(teardown)}"
+  end
 
   defp name_draws(ast) do
     Macro.prewalk(ast, fn
