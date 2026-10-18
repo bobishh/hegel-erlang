@@ -1,0 +1,27 @@
+name: Elixir portability
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-24.04, macos-15]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: erlef/setup-beam@0f75c29430f34bb5af4cce5e3b7f6a8860fca236
+        with:
+          otp-version: '27.3'
+          elixir-version: '1.19.5'
+          rebar3-version: '3'
+      - uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec
+        with:
+          toolchain: '1.98.0'
+      - run: mix deps.get && mix test
+        working-directory: packages/hegel_ex
+      - run: rebar3 eunit
