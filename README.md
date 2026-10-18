@@ -97,4 +97,6 @@ Enter the devenv shell, then run `just test`. `just native` statically links
 `hegeltest-c` into the Rustler NIF for development. Compiled NIFs are release
 artifacts rather than source-controlled files; packaged releases place them
 under `priv/native/<platform>`. `HEGEL_NIF_PATH` remains available for
-packagers and local debugging.
+packagers and local debugging; when it names an existing library, the Elixir
+package's compiler copies it instead of running cargo, so sandboxed builds can
+supply an engine built elsewhere.
