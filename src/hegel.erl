@@ -22,16 +22,17 @@ run(Property, Options0) when is_function(Property, 1), is_map(Options0) ->
     Options = defaults(Options0),
     {ok, Run} = hegel_native:run_start(
         atom_to_binary(maps:get(profile, Options)), maps:get(test_cases, Options),
-        seed_value(maps:get(seed, Options)), maps:get(derandomize, Options),
+        seed_value(maps:get(seed, Options)), optional(maps:get(derandomize, Options)),
         maps:get(report_multiple_failures, Options), maps:get(show_statistics, Options),
-        maps:get(print_blob, Options), database_value(maps:get(database, Options))),
+        maps:get(print_blob, Options), database_value(maps:get(database, Options)),
+        location_value(maps:get(location, Options))),
     Discovery = drive(Run, Property, []),
     finish(Run, Property, Options, Discovery).
 
 reproduce(Property, Blob) -> reproduce(Property, Blob, #{}).
 reproduce(Property, Blob, Options0) ->
     Options = defaults(Options0),
-    {ok, TC} = replay_case(Blob, Options),
+    {ok, TC} = replay_case(Blob, Options, location_value(maps:get(location, Options))),
     Result = execute(Property, TC),
     _ = complete_result(TC, Result),
     case Result of
@@ -63,9 +64,13 @@ target(Name, Value) when is_number(Value) ->
 on_cleanup(Fun) when is_function(Fun, 0) ->
     put(?CLEANUP_KEY, [Fun | case get(?CLEANUP_KEY) of undefined -> []; X -> X end]), ok.
 
+%% `derandomize` and `database` default to `undefined`, leaving them to the
+%% selected profile (for example `workload` inside Antithesis). `location`
+%% names the test for the engine's Antithesis verdict report.
 defaults(Options) -> maps:merge(#{profile => default, test_cases => 100, seed => undefined,
-    derandomize => false, database => default, report_multiple_failures => false,
-    show_statistics => false, print_blob => true, verbosity => normal}, Options).
+    derandomize => undefined, database => undefined, report_multiple_failures => false,
+    show_statistics => false, print_blob => true, verbosity => normal,
+    location => undefined}, Options).
 
 drive(Run, Property, Stash) ->
     case hegel_native:run_next(Run) of
@@ -87,8 +92,10 @@ finish(Run, Property, Options, Discovery) ->
               failures => [replay_failure(Property, Options, F) || F <- NativeFailures]}
     end.
 
+%% Failure replays carry no location: the run itself already reported its
+%% verdict, and a replay must not evaluate the assertion a second time.
 replay_failure(Property, Options, #{origin := Origin, blob := Blob}) ->
-    {ok, TC} = replay_case(Blob, Options),
+    {ok, TC} = replay_case(Blob, Options, nil),
     {ok, Printer} = hegel_native:open_printer(TC),
     Result = execute(Property, TC),
     Output = case hegel_native:printer_output(Printer) of
@@ -102,11 +109,11 @@ replay_failure(Property, Options, #{origin := Origin, blob := Blob}) ->
                origin => Origin, blob => Blob}
     end.
 
-replay_case(Blob, Options) ->
+replay_case(Blob, Options, Location) ->
     hegel_native:case_from_blob(atom_to_binary(maps:get(profile, Options)), Blob,
         maps:get(test_cases, Options), seed_value(maps:get(seed, Options)),
-        maps:get(derandomize, Options), maps:get(show_statistics, Options),
-        maps:get(print_blob, Options), database_value(maps:get(database, Options))).
+        optional(maps:get(derandomize, Options)), maps:get(show_statistics, Options),
+        maps:get(print_blob, Options), database_value(maps:get(database, Options)), Location).
 
 execute(Property, TC) ->
     put(?TC_KEY, TC), put(?CLEANUP_KEY, []),
@@ -150,6 +157,15 @@ unwrap_unit({error, Reason}) -> error({hegel_native, Reason}).
 to_text(Value) when is_binary(Value); is_list(Value) -> Value;
 to_text(Value) when is_atom(Value) -> atom_to_binary(Value);
 to_text(Value) -> io_lib:format("~tp", [Value]).
+optional(undefined) -> nil;
+optional(Value) -> Value.
+location_value(undefined) -> nil;
+location_value(nil) -> nil;
+location_value({File, Line, Class, Function}) when is_integer(Line), Line >= 0, Line =< 16#FFFFFFFF ->
+    {unicode:characters_to_binary(File), Line, unicode:characters_to_binary(to_text(Class)),
+     unicode:characters_to_binary(to_text(Function))};
+location_value(Other) -> error({badarg, {location, Other}}).
+database_value(undefined) -> nil;
 database_value(default) -> <<"$default">>;
 database_value(disabled) -> <<>>;
 database_value(Path) -> iolist_to_binary(Path).

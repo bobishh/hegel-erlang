@@ -29,17 +29,24 @@ defmodule HegelTest do
                teardown: fn context -> send(parent, {:teardown, context}) end
              )
 
-    messages =
-      Enum.map(1..9, fn _ ->
-        receive do
-          message -> message
-        end
-      end)
-
-    assert Enum.count(messages, &match?({:setup, _}, &1)) == 3
-    assert Enum.count(messages, &match?({:body, _}, &1)) == 3
-    assert Enum.count(messages, &match?({:teardown, _}, &1)) == 3
+    # A property that draws nothing gives the engine nothing to vary, so it
+    # may run fewer cases than requested; each case it runs must pair setup,
+    # body and teardown on one context.
+    messages = drain([])
+    setups = for {:setup, context} <- messages, do: context
+    assert length(setups) in 1..3
+    assert setups == for({:body, context} <- messages, do: context)
+    assert setups == for({:teardown, context} <- messages, do: context)
+    assert length(Enum.uniq(setups)) == length(setups)
     assert_raise RuntimeError, ~r/outside a property case/, &Hegel.context/0
+  end
+
+  defp drain(acc) do
+    receive do
+      message -> drain([message | acc])
+    after
+      0 -> Enum.reverse(acc)
+    end
   end
 
   test "nested checks fail with a clear error" do
@@ -123,8 +130,9 @@ defmodule HegelPropertyContextTest do
     %{fixture: %{value: :from_setup}}
   end
 
-  property "a named ExUnit context pattern remains available", fixture, test_cases: 2 do
-    assert fixture == %{value: :from_setup}
+  # As with `test "...", context`, a bare variable binds the whole context.
+  property "a named ExUnit context pattern remains available", context, test_cases: 2 do
+    assert context.fixture == %{value: :from_setup}
   end
 
   property "map ExUnit context patterns remain available", %{fixture: fixture}, test_cases: 2 do

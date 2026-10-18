@@ -1,7 +1,7 @@
 -module(hegel_native).
 -on_load(init/0).
--export([init/0, version/0, run_start/8, run_next/1, run_result/1,
-         case_from_blob/8, complete/3, clone_case/1,
+-export([init/0, version/0, run_start/9, run_next/1, run_result/1,
+         case_from_blob/9, complete/3, clone_case/1,
          boolean/2, integer/3, float/3, bytes/3, note/2, open_printer/1, printer_output/1,
          event/2, event_value/3, target/3]).
 
@@ -65,10 +65,10 @@ load_first([Path | Rest]) ->
 
 nif_error() -> erlang:nif_error({nif_not_loaded, ?MODULE}).
 version() -> nif_error().
-run_start(_, _, _, _, _, _, _, _) -> nif_error().
+run_start(_, _, _, _, _, _, _, _, _) -> nif_error().
 run_next(_) -> nif_error().
 run_result(_) -> nif_error().
-case_from_blob(_, _, _, _, _, _, _, _) -> nif_error().
+case_from_blob(_, _, _, _, _, _, _, _, _) -> nif_error().
 complete(_, _, _) -> nif_error().
 clone_case(_) -> nif_error().
 boolean(_, _) -> nif_error().

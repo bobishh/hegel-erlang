@@ -56,6 +56,30 @@ The facade uses the `hegel/property` and `hegel/gen` namespace. A root Gleam
 module named `hegel` would compile to the same BEAM module as the Erlang API,
 so the nested namespace keeps both packages interoperable.
 
+## Antithesis
+
+Hegel reports property verdicts to [Antithesis](https://antithesis.com/) when
+a run knows which test it belongs to. Inside Antithesis (`ANTITHESIS_OUTPUT_DIR`
+set) the engine appends one `always` assertion per located run to
+`$ANTITHESIS_OUTPUT_DIR/sdk.jsonl`, named `Module::function passes properties`
+and declared with `must_hit`, so the property appears in the run's report and a
+counterexample fails it.
+
+- Elixir's `property` and `check all` capture the enclosing module, test
+  function, file and line automatically. Pass `location: {file, line, module,
+  function}` to override it.
+- Erlang names the enclosing function with `?HEGEL_LOCATION` or
+  `?HEGEL_CHECK(Fun, Options)` from `hegel.hrl`, or passes
+  `location => {File, Line, Module, Function}` to `hegel:check/2` and
+  `hegel:run/2`.
+- Runs without a location report nothing. A failing run reports once: its
+  shrinking replays carry no location.
+
+The default profile resolves to the engine's `workload` profile inside
+Antithesis: urandom choices on every draw, no example database and no
+wall-clock health checks. Options left unset (`derandomize`, `database`) are
+left to the profile, so set them only to override it deliberately.
+
 ## Examples
 
 Complete, runnable applications are available for each BEAM language:

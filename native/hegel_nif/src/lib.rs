@@ -111,16 +111,52 @@ fn call(ctx: &Context, result: hegel_result_t) -> Result<(), String> {
     }
 }
 
+/// Where a property lives, for the engine's Antithesis verdict report.
+struct TestLocation {
+    file: CString,
+    begin_line: u32,
+    class: CString,
+    function: CString,
+}
+
+/// Decode `nil` or `{File, Line, Class, Function}` with binary strings.
+fn test_location(term: Term) -> Result<Option<TestLocation>, String> {
+    if term.is_atom() && term.atom_to_string().ok().as_deref() == Some("nil") {
+        return Ok(None);
+    }
+    let (file, begin_line, class, function): (Binary, u32, Binary, Binary) = term
+        .decode()
+        .map_err(|_| "invalid test location".to_string())?;
+    let text = |value: Binary, name: &str| -> Result<CString, String> {
+        let value = std::str::from_utf8(value.as_slice())
+            .map_err(|_| format!("test location {name} is not UTF-8"))?;
+        if value.is_empty() {
+            return Err(format!("test location {name} is empty"));
+        }
+        CString::new(value).map_err(|_| format!("test location {name} contains NUL"))
+    };
+    Ok(Some(TestLocation {
+        file: text(file, "file")?,
+        begin_line,
+        class: text(class, "class")?,
+        function: text(function, "function")?,
+    }))
+}
+
+/// Settings for one run or replay. `None` leaves a setting to the selected
+/// profile, so an environment profile such as Antithesis's `workload` keeps
+/// its derandomization and database choices unless the caller overrides them.
 unsafe fn settings(
     ctx: &Context,
     profile: &str,
     test_cases: u64,
     seed: Option<u64>,
-    derandomize: bool,
+    derandomize: Option<bool>,
     multiple: bool,
     statistics: bool,
     print_blob: bool,
-    database: &str,
+    database: Option<&str>,
+    location: Option<&TestLocation>,
 ) -> Result<*mut HegelSettings, String> {
     let mut out = ptr::null_mut();
     let profile = CString::new(profile).map_err(|_| "profile contains NUL".to_string())?;
@@ -134,9 +170,23 @@ unsafe fn settings(
         call(ctx, unsafe {
             hegel_c::hegel_settings_set_seed(ctx.0, out, seed.unwrap_or(0), seed.is_some())
         })?;
-        call(ctx, unsafe {
-            hegel_c::hegel_settings_set_derandomize(ctx.0, out, derandomize)
-        })?;
+        if let Some(derandomize) = derandomize {
+            call(ctx, unsafe {
+                hegel_c::hegel_settings_set_derandomize(ctx.0, out, derandomize)
+            })?;
+        }
+        if let Some(location) = location {
+            call(ctx, unsafe {
+                hegel_c::hegel_settings_set_test_location(
+                    ctx.0,
+                    out,
+                    location.file.as_ptr(),
+                    location.begin_line,
+                    location.class.as_ptr(),
+                    location.function.as_ptr(),
+                )
+            })?;
+        }
         call(ctx, unsafe {
             hegel_c::hegel_settings_set_report_multiple_failures(ctx.0, out, multiple)
         })?;
@@ -146,12 +196,12 @@ unsafe fn settings(
         call(ctx, unsafe {
             hegel_c::hegel_settings_set_print_blob(ctx.0, out, print_blob)
         })
-        .and_then(|_| {
-            if database == "$default" {
-                call(ctx, unsafe {
-                    hegel_c::hegel_settings_set_database(ctx.0, out, ptr::null())
-                })
-            } else {
+        .and_then(|_| match database {
+            None => Ok(()),
+            Some("$default") => call(ctx, unsafe {
+                hegel_c::hegel_settings_set_database(ctx.0, out, ptr::null())
+            }),
+            Some(database) => {
                 let value =
                     CString::new(database).map_err(|_| "database path contains NUL".to_string())?;
                 call(ctx, unsafe {
@@ -188,17 +238,25 @@ fn run_start<'a>(
     profile: Binary,
     test_cases: u64,
     seed: Option<u64>,
-    derandomize: bool,
+    derandomize: Option<bool>,
     multiple: bool,
     statistics: bool,
     print_blob: bool,
-    database: Binary,
+    database: Option<Binary>,
+    location: Term<'a>,
 ) -> Term<'a> {
     let Ok(profile) = std::str::from_utf8(profile.as_slice()) else {
         return error_tuple(env, "invalid profile");
     };
-    let Ok(database) = std::str::from_utf8(database.as_slice()) else {
+    let Ok(database) = database
+        .map(|value| std::str::from_utf8(value.as_slice()))
+        .transpose()
+    else {
         return error_tuple(env, "invalid database path");
+    };
+    let location = match test_location(location) {
+        Ok(location) => location,
+        Err(message) => return error_tuple(env, message),
     };
     let ctx = Context::new();
     let configured = unsafe {
@@ -212,6 +270,7 @@ fn run_start<'a>(
             statistics,
             print_blob,
             database,
+            location.as_ref(),
         )
     };
     let Ok(configured) = configured else {
@@ -364,10 +423,11 @@ fn case_from_blob<'a>(
     blob: Binary,
     test_cases: u64,
     seed: Option<u64>,
-    derandomize: bool,
+    derandomize: Option<bool>,
     statistics: bool,
     print_blob: bool,
-    database: Binary,
+    database: Option<Binary>,
+    location: Term<'a>,
 ) -> Term<'a> {
     let Ok(profile) = std::str::from_utf8(profile.as_slice()) else {
         return error_tuple(env, "invalid profile");
@@ -375,8 +435,15 @@ fn case_from_blob<'a>(
     let Ok(blob) = std::str::from_utf8(blob.as_slice()) else {
         return error_tuple(env, "invalid blob");
     };
-    let Ok(database) = std::str::from_utf8(database.as_slice()) else {
+    let Ok(database) = database
+        .map(|value| std::str::from_utf8(value.as_slice()))
+        .transpose()
+    else {
         return error_tuple(env, "invalid database path");
+    };
+    let location = match test_location(location) {
+        Ok(location) => location,
+        Err(message) => return error_tuple(env, message),
     };
     let Ok(blob) = c_string(blob) else {
         return error_tuple(env, "invalid blob");
@@ -393,6 +460,7 @@ fn case_from_blob<'a>(
             statistics,
             print_blob,
             database,
+            location.as_ref(),
         )
     };
     let Ok(configured) = configured else {

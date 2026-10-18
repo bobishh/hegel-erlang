@@ -44,18 +44,45 @@ defmodule Hegel do
           acc
       end)
 
+    location = Macro.escape(caller_location(__CALLER__))
+
     quote do
       if Hegel.in_property_case?() do
         unquote(body)
       else
-        Hegel.check_run(fn -> unquote(body) end, unquote(opts))
+        Hegel.check_run(
+          fn -> unquote(body) end,
+          Hegel.__put_location__(unquote(opts), unquote(location))
+        )
       end
     end
   end
 
   defmacro check(fun, options) do
-    quote do: Hegel.check_run(unquote(fun), unquote(options))
+    location = Macro.escape(caller_location(__CALLER__))
+
+    quote do
+      Hegel.check_run(unquote(fun), Hegel.__put_location__(unquote(options), unquote(location)))
+    end
   end
+
+  # The enclosing test function names the property for the engine's
+  # Antithesis verdict report; outside a function there is no stable name.
+  defp caller_location(%Macro.Env{function: {name, _arity}} = env) do
+    {Path.relative_to_cwd(env.file), env.line, inspect(env.module), Atom.to_string(name)}
+  end
+
+  defp caller_location(_env), do: nil
+
+  @doc false
+  @spec __put_location__(keyword() | map(), Hegel.Options.location() | nil) :: keyword() | map()
+  def __put_location__(options, nil), do: options
+
+  def __put_location__(options, location) when is_list(options),
+    do: Keyword.put_new(options, :location, location)
+
+  def __put_location__(options, location) when is_map(options),
+    do: Map.put_new(options, :location, location)
 
   defmacro gen({:all, _meta, generators}, do: block) do
     {opts, generators} =
