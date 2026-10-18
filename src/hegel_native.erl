@@ -15,8 +15,8 @@ candidate_paths() ->
     end,
     Beam = code:which(?MODULE),
     {ok, Cwd} = file:get_cwd(),
-    Built = filename:join([filename:dirname(Beam), "..", "..", "..", "..", "hegel", "priv", "hegel_nif"]),
-    Source = filename:join([filename:dirname(Beam), "..", "..", "..", "..", "..", "deps", "hegel_ex", "priv", "hegel_nif"]),
+    Built = filename:absname(filename:join([filename:dirname(Beam), "..", "..", "..", "..", "hegel", "priv", "hegel_nif"])),
+    Source = filename:join([Cwd, "deps", "hegel_ex", "priv", "hegel_nif"]),
     Override ++ Priv ++ [Built, Source] ++ native_paths(Cwd) ++ native_paths(filename:dirname(Beam)).
 
 native_paths(Path) -> native_paths(filename:absname(Path), 8, []).
