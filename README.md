@@ -124,3 +124,8 @@ under `priv/native/<platform>`. `HEGEL_NIF_PATH` remains available for
 packagers and local debugging; when it names an existing library, the Elixir
 package's compiler copies it instead of running cargo, so sandboxed builds can
 supply an engine built elsewhere.
+
+The Mix native compiler installs libraries using a complete temporary sibling
+file followed by atomic rename. Existing BEAM VMs retain their mapped inode
+while concurrent compilers publish new artifacts; installed libraries are
+never truncated in place.

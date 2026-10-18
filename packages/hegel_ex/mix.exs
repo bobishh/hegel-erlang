@@ -22,22 +22,39 @@ defmodule Mix.Tasks.Compile.HegelNif do
 
     output = prebuilt() || build(manifest, output)
 
-    File.mkdir_p!(Path.dirname(destination))
-    File.cp!(output, destination)
-    File.mkdir_p!(Path.dirname(build_destination))
-    File.cp!(output, build_destination)
-    File.mkdir_p!(Path.dirname(lib_build_destination))
-    File.cp!(output, lib_build_destination)
+    install_native!(output, destination)
+    install_native!(output, build_destination)
+    install_native!(output, lib_build_destination)
 
     for profile <- ~w(dev test prod) do
       profile_destination =
         Path.join(build_root, Path.join(["_build", profile, "lib/hegel/priv/hegel_nif.so"]))
 
-      File.mkdir_p!(Path.dirname(profile_destination))
-      File.cp!(output, profile_destination)
+      install_native!(output, profile_destination)
     end
 
     :ok
+  end
+
+  @doc false
+  @spec install_native!(Path.t(), Path.t()) :: :ok
+  def install_native!(source, destination) do
+    File.mkdir_p!(Path.dirname(destination))
+    suffix = "#{System.pid()}.#{System.unique_integer([:positive, :monotonic])}"
+    temporary = destination <> ".install-" <> suffix
+
+    # Never truncate the destination: another VM may have its ELF segments
+    # mapped. Renaming a complete sibling file leaves that VM's inode intact.
+    # Exclusive creation ensures concurrent installers cannot share staging.
+    file = File.open!(temporary, [:write, :binary, :exclusive])
+
+    try do
+      :ok = File.close(file)
+      File.cp!(source, temporary)
+      File.rename!(temporary, destination)
+    after
+      File.rm(temporary)
+    end
   end
 
   # A packager or sandboxed build (for example Nix, which cannot fetch crates)
