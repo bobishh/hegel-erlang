@@ -6,7 +6,7 @@ defmodule Mix.Tasks.Compile.HegelNif do
     package = Mix.Project.project_file() |> Path.dirname()
     root = Path.expand("../..", package)
     manifest = Path.join(root, "native/hegel_nif/Cargo.toml")
-    output = Path.join(root, "native/hegel_nif/target/release/libhegel_nif.so")
+    output = Path.join(root, "native/hegel_nif/target/release/#{native_library_filename(:os.type())}")
     destination = Path.join(root, "priv/hegel_nif.so")
 
     build_destination =
@@ -35,6 +35,11 @@ defmodule Mix.Tasks.Compile.HegelNif do
 
     :ok
   end
+
+  @doc false
+  @spec native_library_filename({atom(), atom()}) :: String.t()
+  def native_library_filename({:unix, :darwin}), do: "libhegel_nif.dylib"
+  def native_library_filename(_platform), do: "libhegel_nif.so"
 
   @doc false
   @spec install_native!(Path.t(), Path.t()) :: :ok
