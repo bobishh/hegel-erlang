@@ -94,7 +94,7 @@ defmodule Hegel do
           end
         end
 
-      is_list(second) ->
+      is_list(second) and Keyword.keyword?(second) ->
         options = second
 
         quote do
