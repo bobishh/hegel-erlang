@@ -16,7 +16,10 @@ defmodule Mix.Tasks.Compile.HegelNif do
       Mix.Project.build_path()
       |> Path.join("lib/hegel/priv/hegel_nif")
     profile_destination =
-      Path.join([File.cwd!(), "_build", Atom.to_string(Mix.env()), "lib/hegel/priv/hegel_nif"])
+      Mix.Project.build_path()
+      |> Path.dirname()
+      |> Path.dirname()
+      |> Path.join(Path.join(["_build", Atom.to_string(Mix.env()), "lib/hegel/priv/hegel_nif"]))
 
     unless File.exists?(manifest), do: Mix.raise("Hegel native manifest is missing: #{manifest}")
 
